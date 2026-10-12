@@ -4,18 +4,20 @@ plugins {
 
 android {
     namespace = "com.huamani.mitiemposemanal"
-    compileSdk {
-        version = release(37)
-    }
+    compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.huamani.mitiemposemanal"
-        minSdk = 36
-        targetSdk = 37
+        applicationId = "com.senati.mitiemposemanal.ohuamani"
+        minSdk = 24
+        targetSdk = 36
         versionCode = 1
-        versionName = "1.0"
+        versionName = "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildFeatures {
+        viewBinding = true
     }
 
     buildTypes {

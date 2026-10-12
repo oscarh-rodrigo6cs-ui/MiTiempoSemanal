@@ -1,3 +1,35 @@
 <resources>
     <string name="app_name">MiTiempoSemanal</string>
+    <string name="header_student_info">Oscar Huamani V. · v0.1.0 (1)</string>
+
+    <string name="tab_tareas">Tareas</string>
+    <string name="tab_categorias">Categorías</string>
+
+    <!-- Categorías -->
+    <string name="title_nueva_categoria">Nueva Categoría</string>
+    <string name="title_editar_categoria">Editar Categoría</string>
+    <string name="hint_nombre_categoria">Nombre de categoría</string>
+    <string name="btn_agregar_categoria">+ Nueva Categoría</string>
+    <string name="msg_categoria_vacia">El nombre de la categoría no puede estar vacío</string>
+    <string name="msg_categoria_duplicada">Ya existe una categoría con ese nombre</string>
+    <string name="msg_categoria_con_tareas">No se puede eliminar la categoría porque tiene tareas asociadas</string>
+    <string name="msg_confirmar_eliminar_cat">¿Está seguro de eliminar la categoría \"%1$s\"?</string>
+
+    <!-- Tareas -->
+    <string name="title_nueva_tarea">Nueva Tarea</string>
+    <string name="title_editar_tarea">Editar Tarea</string>
+    <string name="hint_nombre_tarea">Nombre de tarea</string>
+    <string name="label_categoria">Categoría:</string>
+    <string name="btn_agregar_tarea">+ Nueva Tarea</string>
+    <string name="msg_tarea_vacia">El nombre de la tarea es obligatorio</string>
+    <string name="msg_seleccionar_categoria">Debe seleccionar una categoría existente</string>
+    <string name="msg_tarea_duplicada">Ya existe una tarea con el nombre especificado</string>
+    <string name="msg_confirmar_eliminar_tarea">¿Está seguro de eliminar la tarea \"%1$s\"?</string>
+
+    <!-- General -->
+    <string name="btn_guardar">Guardar</string>
+    <string name="btn_cancelar">Cancelar</string>
+    <string name="btn_eliminar">Eliminar</string>
+    <string name="title_confirmacion">Confirmación</string>
+    <string name="no_hay_datos">No hay elementos registrados</string>
 </resources>
