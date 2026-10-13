@@ -6,6 +6,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import com.huamani.mitiemposemanal.model.Categoria
 import com.huamani.mitiemposemanal.model.Evento
+import com.huamani.mitiemposemanal.model.ResumenCategoria
 import com.huamani.mitiemposemanal.model.Tarea
 
 class DatabaseHelper(context: Context) : SQLiteOpenHelper(
@@ -17,7 +18,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
 
     companion object {
         private const val DATABASE_NAME = "mitiemposemanal.db"
-        private const val DATABASE_VERSION = 2
+        private const val DATABASE_VERSION = 3
 
         // Tabla Categorías
         const val TABLE_CATEGORIAS = "categorias"
@@ -30,13 +31,14 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         const val COLUMN_TAREA_NOMBRE = "nombre"
         const val COLUMN_TAREA_CAT_ID = "categoria_id"
 
-        // Tabla Eventos (Sprint 2)
+        // Tabla Eventos (Sprint 2 & 3)
         const val TABLE_EVENTOS = "eventos"
         const val COLUMN_EV_ID = "id"
         const val COLUMN_EV_TAREA_ID = "tarea_id"
         const val COLUMN_EV_INICIO = "inicio"
         const val COLUMN_EV_FIN = "fin"
         const val COLUMN_EV_DURACION = "duracion"
+        const val COLUMN_EV_DURACION_MINUTOS = "duracion_minutos"
     }
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -63,6 +65,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
                 $COLUMN_EV_INICIO TEXT NOT NULL,
                 $COLUMN_EV_FIN TEXT,
                 $COLUMN_EV_DURACION TEXT,
+                $COLUMN_EV_DURACION_MINUTOS REAL DEFAULT 0.0,
                 FOREIGN KEY($COLUMN_EV_TAREA_ID) REFERENCES $TABLE_TAREAS($COLUMN_TAREA_ID) ON DELETE CASCADE
             );
         """.trimIndent()
@@ -90,10 +93,16 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
                     $COLUMN_EV_INICIO TEXT NOT NULL,
                     $COLUMN_EV_FIN TEXT,
                     $COLUMN_EV_DURACION TEXT,
+                    $COLUMN_EV_DURACION_MINUTOS REAL DEFAULT 0.0,
                     FOREIGN KEY($COLUMN_EV_TAREA_ID) REFERENCES $TABLE_TAREAS($COLUMN_TAREA_ID) ON DELETE CASCADE
                 );
             """.trimIndent()
             db.execSQL(createTableEventos)
+        }
+        if (oldVersion < 3) {
+            try {
+                db.execSQL("ALTER TABLE $TABLE_EVENTOS ADD COLUMN $COLUMN_EV_DURACION_MINUTOS REAL DEFAULT 0.0;")
+            } catch (_: Exception) {}
         }
     }
 
@@ -303,7 +312,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         return false
     }
 
-    // --- OPERACIONES DE EVENTOS (Sprint 2) ---
+    // --- OPERACIONES DE EVENTOS (Sprint 2 & 3) ---
 
     fun getEventoEnCurso(): Evento? {
         val db = readableDatabase
@@ -340,15 +349,17 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
             put(COLUMN_EV_INICIO, inicio)
             putNull(COLUMN_EV_FIN)
             putNull(COLUMN_EV_DURACION)
+            put(COLUMN_EV_DURACION_MINUTOS, 0.0)
         }
         return db.insert(TABLE_EVENTOS, null, cv)
     }
 
-    fun finalizarEvento(eventoId: Int, fin: String, duracion: String): Boolean {
+    fun finalizarEvento(eventoId: Int, fin: String, duracion: String, duracionMinutos: Double): Boolean {
         val db = writableDatabase
         val cv = ContentValues().apply {
             put(COLUMN_EV_FIN, fin)
             put(COLUMN_EV_DURACION, duracion)
+            put(COLUMN_EV_DURACION_MINUTOS, duracionMinutos)
         }
         val rows = db.update(
             TABLE_EVENTOS,
@@ -383,6 +394,38 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
                     val tareaNombre = it.getString(it.getColumnIndexOrThrow("tarea_nombre"))
                     val catNombre = it.getString(it.getColumnIndexOrThrow("cat_nombre"))
                     list.add(Evento(id, tareaId, tareaNombre, catNombre, inicio, fin, duracion))
+                } while (it.moveToNext())
+            }
+        }
+        return list
+    }
+
+    // --- CÁLCULO RESUMEN SEMANAL (Sprint 3: SUM y GROUP BY con precisión Double/Minutos fraccionales) ---
+
+    fun getResumenSemanal(inicioSemana: String, finSemana: String): List<ResumenCategoria> {
+        val list = mutableListOf<ResumenCategoria>()
+        val db = readableDatabase
+        val query = """
+            SELECT c.$COLUMN_CAT_ID AS cat_id, c.$COLUMN_CAT_NOMBRE AS cat_nombre,
+                   COALESCE(SUM(e.$COLUMN_EV_DURACION_MINUTOS), 0.0) AS total_minutos
+            FROM $TABLE_CATEGORIAS c
+            LEFT JOIN $TABLE_TAREAS t ON t.$COLUMN_TAREA_CAT_ID = c.$COLUMN_CAT_ID
+            LEFT JOIN $TABLE_EVENTOS e ON e.$COLUMN_EV_TAREA_ID = t.$COLUMN_TAREA_ID 
+                 AND e.$COLUMN_EV_FIN IS NOT NULL 
+                 AND e.$COLUMN_EV_INICIO >= ? 
+                 AND e.$COLUMN_EV_INICIO <= ?
+            GROUP BY c.$COLUMN_CAT_ID, c.$COLUMN_CAT_NOMBRE
+            ORDER BY c.$COLUMN_CAT_ID ASC
+        """.trimIndent()
+
+        val cursor = db.rawQuery(query, arrayOf(inicioSemana, finSemana))
+        cursor.use {
+            if (it.moveToFirst()) {
+                do {
+                    val id = it.getInt(it.getColumnIndexOrThrow("cat_id"))
+                    val nombre = it.getString(it.getColumnIndexOrThrow("cat_nombre"))
+                    val minutos = it.getDouble(it.getColumnIndexOrThrow("total_minutos"))
+                    list.add(ResumenCategoria(id, nombre, minutos))
                 } while (it.moveToNext())
             }
         }

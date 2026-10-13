@@ -37,7 +37,7 @@
                     android:textSize="18sp"
                     android:textStyle="bold" />
 
-                <!-- AutoCompleteTextView para buscar o ingresar tarea mientras escribo (HU-03 & HU-04) -->
+                <!-- AutoCompleteTextView para buscar o ingresar tarea -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/tilBuscarTarea"
                     style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
@@ -99,7 +99,7 @@
                         android:textColor="@color/text_primary"
                         android:textSize="16sp"
                         android:textStyle="bold"
-                        tools:text="Desarrollar Sprint 2" />
+                        tools:text="Desarrollar Sprint 3" />
 
                     <TextView
                         android:id="@+id/tvActivoCronometro"
@@ -147,6 +147,51 @@
                         app:iconTint="@color/white" />
 
                 </LinearLayout>
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Panel Resumen Semanal (HU-06) -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardBackgroundColor="@color/card_background"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="3dp"
+            app:strokeColor="@color/card_border"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/title_resumen_semanal"
+                    android:textColor="@color/text_primary"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvRangoSemana"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp"
+                    tools:text="Semana: 12/10/2026 - 18/10/2026" />
+
+                <!-- Contenedor Dinámico para las filas de categorías y Sin registrar -->
+                <LinearLayout
+                    android:id="@+id/llResumenContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="vertical" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>

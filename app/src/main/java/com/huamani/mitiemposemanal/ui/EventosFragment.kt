@@ -1,5 +1,6 @@
 package com.huamani.mitiemposemanal.ui
 
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -8,7 +9,11 @@ import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AutoCompleteTextView
 import android.widget.ArrayAdapter
+import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
@@ -16,27 +21,40 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.huamani.mitiemposemanal.MainActivity
 import com.huamani.mitiemposemanal.R
 import com.huamani.mitiemposemanal.adapter.EventoAdapter
-import com.huamani.mitiemposemanal.databinding.FragmentEventosBinding
 import com.huamani.mitiemposemanal.db.DatabaseHelper
 import com.huamani.mitiemposemanal.model.Categoria
 import com.huamani.mitiemposemanal.model.Evento
+import java.time.DayOfWeek
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.time.temporal.TemporalAdjusters
+import java.util.Locale
 
 class EventosFragment : Fragment() {
-
-    private var _binding: FragmentEventosBinding? = null
-    private val binding get() = _binding!!
 
     private lateinit var dbHelper: DatabaseHelper
     private lateinit var eventoAdapter: EventoAdapter
 
     private var eventoEnCurso: Evento? = null
     private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+
+    // Referencias de vistas (findViewById)
+    private lateinit var actvBuscarTarea: AutoCompleteTextView
+    private lateinit var tvCategoriaSeleccionada: TextView
+    private lateinit var layoutEventoActivo: LinearLayout
+    private lateinit var tvActivoTarea: TextView
+    private lateinit var tvActivoCronometro: TextView
+    private lateinit var btnIniciar: Button
+    private lateinit var btnFinalizar: Button
+    private lateinit var tvRangoSemana: TextView
+    private lateinit var llResumenContainer: LinearLayout
+    private lateinit var tvEmptyEventos: TextView
+    private lateinit var rvEventos: RecyclerView
 
     private val handler = Handler(Looper.getMainLooper())
     private val timerRunnable = object : Runnable {
@@ -51,8 +69,21 @@ class EventosFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentEventosBinding.inflate(inflater, container, false)
-        return binding.root
+        val view = inflater.inflate(R.layout.fragment_eventos, container, false)
+
+        actvBuscarTarea = view.findViewById(R.id.actvBuscarTarea)
+        tvCategoriaSeleccionada = view.findViewById(R.id.tvCategoriaSeleccionada)
+        layoutEventoActivo = view.findViewById(R.id.layoutEventoActivo)
+        tvActivoTarea = view.findViewById(R.id.tvActivoTarea)
+        tvActivoCronometro = view.findViewById(R.id.tvActivoCronometro)
+        btnIniciar = view.findViewById(R.id.btnIniciar)
+        btnFinalizar = view.findViewById(R.id.btnFinalizar)
+        tvRangoSemana = view.findViewById(R.id.tvRangoSemana)
+        llResumenContainer = view.findViewById(R.id.llResumenContainer)
+        tvEmptyEventos = view.findViewById(R.id.tvEmptyEventos)
+        rvEventos = view.findViewById(R.id.rvEventos)
+
+        return view
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -64,16 +95,17 @@ class EventosFragment : Fragment() {
         setupButtons()
         checkEstadoEvento()
         loadHistorial()
+        loadResumenSemanal()
     }
 
     private fun setupRecyclerView() {
         eventoAdapter = EventoAdapter(emptyList())
-        binding.rvEventos.layoutManager = LinearLayoutManager(requireContext())
-        binding.rvEventos.adapter = eventoAdapter
+        rvEventos.layoutManager = LinearLayoutManager(requireContext())
+        rvEventos.adapter = eventoAdapter
     }
 
     private fun setupSearchAutoComplete() {
-        binding.actvBuscarTarea.addTextChangedListener(object : TextWatcher {
+        actvBuscarTarea.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 val query = s?.toString()?.trim() ?: ""
@@ -85,20 +117,19 @@ class EventosFragment : Fragment() {
                         android.R.layout.simple_dropdown_item_1line,
                         nombres
                     )
-                    binding.actvBuscarTarea.setAdapter(adapter)
-                    binding.actvBuscarTarea.showDropDown()
+                    actvBuscarTarea.setAdapter(adapter)
+                    actvBuscarTarea.showDropDown()
                 }
 
-                // Detectar si la tarea ya existe para mostrar su categoría
                 val tareaExistente = dbHelper.getTareaByNombre(query)
                 if (tareaExistente != null) {
-                    binding.tvCategoriaSeleccionada.text = "Categoría: ${tareaExistente.categoriaNombre}"
-                    binding.tvCategoriaSeleccionada.setTextColor(
+                    tvCategoriaSeleccionada.text = "Categoría: ${tareaExistente.categoriaNombre}"
+                    tvCategoriaSeleccionada.setTextColor(
                         ContextCompat.getColor(requireContext(), R.color.primary)
                     )
                 } else {
-                    binding.tvCategoriaSeleccionada.text = "Categoría: (Nueva tarea - Se pedirá categoría al iniciar)"
-                    binding.tvCategoriaSeleccionada.setTextColor(
+                    tvCategoriaSeleccionada.text = "Categoría: (Nueva tarea - Se pedirá categoría al iniciar)"
+                    tvCategoriaSeleccionada.setTextColor(
                         ContextCompat.getColor(requireContext(), R.color.text_secondary)
                     )
                 }
@@ -106,34 +137,33 @@ class EventosFragment : Fragment() {
             override fun afterTextChanged(s: Editable?) {}
         })
 
-        binding.actvBuscarTarea.setOnItemClickListener { parent, _, position, _ ->
+        actvBuscarTarea.setOnItemClickListener { parent, _, position, _ ->
             val selectedName = parent.getItemAtPosition(position) as? String
             if (selectedName != null) {
                 val tarea = dbHelper.getTareaByNombre(selectedName)
                 if (tarea != null) {
-                    binding.tvCategoriaSeleccionada.text = "Categoría: ${tarea.categoriaNombre}"
+                    tvCategoriaSeleccionada.text = "Categoría: ${tarea.categoriaNombre}"
                 }
             }
         }
     }
 
     private fun setupButtons() {
-        binding.btnIniciar.setOnClickListener {
-            val tareaNombre = binding.actvBuscarTarea.text.toString().trim()
+        btnIniciar.setOnClickListener {
+            val tareaNombre = actvBuscarTarea.text.toString().trim()
             if (tareaNombre.isEmpty()) {
                 Toast.makeText(requireContext(), R.string.msg_ingresar_nombre_tarea, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            // Verificar si hay evento en curso
             if (dbHelper.getEventoEnCurso() != null) {
                 Toast.makeText(requireContext(), R.string.msg_evento_ya_iniciado, Toast.LENGTH_LONG).show()
+                btnIniciar.isEnabled = false
                 return@setOnClickListener
             }
 
             val tarea = dbHelper.getTareaByNombre(tareaNombre)
             if (tarea == null) {
-                // HU-04: La tarea no existe, solicitar categoría
                 mostrarDialogoCrearTarea(tareaNombre) { tareaCreadaId ->
                     iniciarEventoConTareaId(tareaCreadaId)
                 }
@@ -142,7 +172,7 @@ class EventosFragment : Fragment() {
             }
         }
 
-        binding.btnFinalizar.setOnClickListener {
+        btnFinalizar.setOnClickListener {
             val eventoActivo = dbHelper.getEventoEnCurso()
             if (eventoActivo != null) {
                 val finStr = LocalDateTime.now().format(formatter)
@@ -150,17 +180,19 @@ class EventosFragment : Fragment() {
                 val finTime = LocalDateTime.parse(finStr, formatter)
 
                 val duration = Duration.between(inicioTime, finTime)
+                val totalMinutosFraccional = duration.toMillis() / 60000.0
                 val horas = duration.toHours()
                 val minutos = duration.toMinutes() % 60
                 val segundos = duration.seconds % 60
-                val duracionStr = String.format("%02d:%02d:%02d", horas, minutos, segundos)
+                val duracionStr = String.format(Locale.US, "%02d:%02d:%02d", horas, minutos, segundos)
 
-                dbHelper.finalizarEvento(eventoActivo.id, finStr, duracionStr)
+                dbHelper.finalizarEvento(eventoActivo.id, finStr, duracionStr, totalMinutosFraccional)
                 Toast.makeText(requireContext(), R.string.msg_evento_finalizado, Toast.LENGTH_SHORT).show()
 
                 stopCronometro()
                 checkEstadoEvento()
                 loadHistorial()
+                loadResumenSemanal()
             }
         }
     }
@@ -194,7 +226,6 @@ class EventosFragment : Fragment() {
                 if (catSeleccionada != null) {
                     val nuevoId = dbHelper.insertTarea(nombreTarea, catSeleccionada.id)
                     if (nuevoId > 0) {
-                        // Notificar a MainActivity para actualizar la pestaña de Tareas
                         (activity as? MainActivity)?.pagerAdapter?.tareasFragment?.loadTareas()
                         (activity as? MainActivity)?.updateHeaderCounters()
                         onTareaCreada(nuevoId.toInt())
@@ -212,28 +243,29 @@ class EventosFragment : Fragment() {
         val eventoId = dbHelper.insertEvento(tareaId, inicioStr)
         if (eventoId > 0) {
             Toast.makeText(requireContext(), R.string.msg_evento_iniciado, Toast.LENGTH_SHORT).show()
-            binding.actvBuscarTarea.setText("")
-            binding.tvCategoriaSeleccionada.text = "Categoría: -"
+            actvBuscarTarea.setText("")
+            tvCategoriaSeleccionada.text = "Categoría: -"
             checkEstadoEvento()
             loadHistorial()
+            loadResumenSemanal()
         }
     }
 
     fun checkEstadoEvento() {
-        if (_binding == null) return
+        if (!isAdded) return
         eventoEnCurso = dbHelper.getEventoEnCurso()
         if (eventoEnCurso != null) {
-            binding.layoutEventoActivo.visibility = View.VISIBLE
-            binding.tvActivoTarea.text = "${eventoEnCurso!!.tareaNombre} (${eventoEnCurso!!.categoriaNombre})"
-            binding.btnIniciar.isEnabled = false
-            binding.btnFinalizar.isEnabled = true
-            binding.actvBuscarTarea.isEnabled = false
+            layoutEventoActivo.visibility = View.VISIBLE
+            tvActivoTarea.text = "${eventoEnCurso!!.tareaNombre} (${eventoEnCurso!!.categoriaNombre})"
+            btnIniciar.isEnabled = false
+            btnFinalizar.isEnabled = true
+            actvBuscarTarea.isEnabled = false
             startCronometro()
         } else {
-            binding.layoutEventoActivo.visibility = View.GONE
-            binding.btnIniciar.isEnabled = true
-            binding.btnFinalizar.isEnabled = false
-            binding.actvBuscarTarea.isEnabled = true
+            layoutEventoActivo.visibility = View.GONE
+            btnIniciar.isEnabled = true
+            btnFinalizar.isEnabled = false
+            actvBuscarTarea.isEnabled = true
             stopCronometro()
         }
     }
@@ -245,7 +277,7 @@ class EventosFragment : Fragment() {
 
     private fun stopCronometro() {
         handler.removeCallbacks(timerRunnable)
-        binding.tvActivoCronometro.text = "00:00:00"
+        tvActivoCronometro.text = "00:00:00"
     }
 
     private fun updateCronometro() {
@@ -257,34 +289,104 @@ class EventosFragment : Fragment() {
             val horas = duration.toHours()
             val minutos = duration.toMinutes() % 60
             val segundos = duration.seconds % 60
-            binding.tvActivoCronometro.text = String.format("%02d:%02d:%02d", horas, minutos, segundos)
+            tvActivoCronometro.text = String.format(Locale.US, "%02d:%02d:%02d", horas, minutos, segundos)
         } catch (_: Exception) {
-            binding.tvActivoCronometro.text = "00:00:00"
+            tvActivoCronometro.text = "00:00:00"
         }
     }
 
     fun loadHistorial() {
-        if (_binding == null) return
+        if (!isAdded) return
         val eventos = dbHelper.getAllEventos()
         if (eventos.isEmpty()) {
-            binding.tvEmptyEventos.visibility = View.VISIBLE
-            binding.rvEventos.visibility = View.GONE
+            tvEmptyEventos.visibility = View.VISIBLE
+            rvEventos.visibility = View.GONE
         } else {
-            binding.tvEmptyEventos.visibility = View.GONE
-            binding.rvEventos.visibility = View.VISIBLE
+            tvEmptyEventos.visibility = View.GONE
+            rvEventos.visibility = View.VISIBLE
         }
         eventoAdapter.updateList(eventos)
+    }
+
+    private fun formatTiempo(minutosTotales: Double): String {
+        val totalSegundos = (minutosTotales * 60).toLong()
+        val horas = totalSegundos / 3600
+        val minutos = (totalSegundos % 3600) / 60
+        val segundos = totalSegundos % 60
+
+        return when {
+            horas > 0 && minutos > 0 -> "${horas}h ${minutos}m"
+            horas > 0 -> "${horas}h"
+            minutos > 0 && segundos > 0 -> "${minutos}m ${segundos}s"
+            minutos > 0 -> "${minutos}m"
+            segundos > 0 -> "${segundos}s"
+            else -> "0m"
+        }
+    }
+
+    fun loadResumenSemanal() {
+        if (!isAdded) return
+
+        val now = LocalDateTime.now()
+        val monday = now.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).toLocalDate().atStartOfDay()
+        val sunday = now.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY)).toLocalDate().atTime(23, 59, 59)
+
+        val startStr = monday.format(formatter)
+        val endStr = sunday.format(formatter)
+
+        val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+        tvRangoSemana.text = "Semana ${monday.format(dateFormatter)} - ${sunday.format(dateFormatter)}"
+
+        val resumenList = dbHelper.getResumenSemanal(startStr, endStr)
+        val totalMinutosSemana = 10080.0
+
+        llResumenContainer.removeAllViews()
+
+        var totalRegistradosMinutos = 0.0
+
+        for (resumen in resumenList) {
+            totalRegistradosMinutos += resumen.totalMinutos
+            val tiempoFormateado = formatTiempo(resumen.totalMinutos)
+            val porcentaje = (resumen.totalMinutos / totalMinutosSemana) * 100.0
+
+            val rowView = LayoutInflater.from(requireContext()).inflate(R.layout.item_resumen_semana, llResumenContainer, false)
+            val tvNombre = rowView.findViewById<TextView>(R.id.tvResumenNombre)
+            val tvStats = rowView.findViewById<TextView>(R.id.tvResumenStats)
+            val pb = rowView.findViewById<ProgressBar>(R.id.pbResumen)
+
+            tvNombre.text = resumen.categoriaNombre
+            tvStats.text = String.format(Locale.US, "%s (%.1f%%)", tiempoFormateado, porcentaje)
+            pb.progress = porcentaje.toInt().coerceIn(0, 100)
+
+            llResumenContainer.addView(rowView)
+        }
+
+        val sinRegistrarMinutos = (totalMinutosSemana - totalRegistradosMinutos).coerceAtLeast(0.0)
+        val tiempoSinRegistrar = formatTiempo(sinRegistrarMinutos)
+        val porcentajeSinRegistrar = (sinRegistrarMinutos / totalMinutosSemana) * 100.0
+
+        val rowSinRegistrar = LayoutInflater.from(requireContext()).inflate(R.layout.item_resumen_semana, llResumenContainer, false)
+        val tvNombreSr = rowSinRegistrar.findViewById<TextView>(R.id.tvResumenNombre)
+        val tvStatsSr = rowSinRegistrar.findViewById<TextView>(R.id.tvResumenStats)
+        val pbSr = rowSinRegistrar.findViewById<ProgressBar>(R.id.pbResumen)
+
+        tvNombreSr.text = getString(R.string.label_sin_registrar)
+        tvStatsSr.text = String.format(Locale.US, "%s (%.1f%%)", tiempoSinRegistrar, porcentajeSinRegistrar)
+        pbSr.progress = porcentajeSinRegistrar.toInt().coerceIn(0, 100)
+        pbSr.progressTintList = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), R.color.text_secondary))
+
+        llResumenContainer.addView(rowSinRegistrar)
     }
 
     override fun onResume() {
         super.onResume()
         checkEstadoEvento()
         loadHistorial()
+        loadResumenSemanal()
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         stopCronometro()
-        _binding = null
     }
 }
