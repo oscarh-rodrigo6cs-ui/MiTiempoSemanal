@@ -12,8 +12,8 @@ import com.huamani.mitiemposemanal.db.DatabaseHelper
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityMainBinding
-    private lateinit var pagerAdapter: MainPagerAdapter
+    lateinit var binding: ActivityMainBinding
+    lateinit var pagerAdapter: MainPagerAdapter
     private lateinit var dbHelper: DatabaseHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,20 +31,24 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
-        // Encabezado con información del estudiante y versión exactas
+        // Encabezado con información del estudiante y versión del Sprint 2
         binding.tvHeaderStudentInfo.text = getString(R.string.header_student_info)
 
-        // Configuración de ViewPager2 y TabLayout con íconos
+        // Configuración de ViewPager2 y TabLayout con 3 pestañas
         pagerAdapter = MainPagerAdapter(this)
         binding.viewPager.adapter = pagerAdapter
 
         TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
             when (position) {
                 0 -> {
+                    tab.text = getString(R.string.tab_eventos)
+                    tab.setIcon(R.drawable.ic_time)
+                }
+                1 -> {
                     tab.text = getString(R.string.tab_tareas)
                     tab.setIcon(R.drawable.ic_task)
                 }
-                1 -> {
+                2 -> {
                     tab.text = getString(R.string.tab_categorias)
                     tab.setIcon(R.drawable.ic_category)
                 }

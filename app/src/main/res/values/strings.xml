@@ -1,9 +1,25 @@
 <resources>
     <string name="app_name">MiTiempoSemanal</string>
-    <string name="header_student_info">Oscar Huamani V. · v0.1.0 (1)</string>
+    <string name="header_student_info">Oscar Huamani V. · v0.2.0 (2)</string>
 
+    <string name="tab_eventos">Eventos</string>
     <string name="tab_tareas">Tareas</string>
     <string name="tab_categorias">Categorías</string>
+
+    <!-- Eventos & Cronómetro (Sprint 2) -->
+    <string name="hint_buscar_tarea">Buscar o ingresar nombre de tarea...</string>
+    <string name="btn_iniciar">Iniciar</string>
+    <string name="btn_finalizar">Finalizar</string>
+    <string name="title_evento_en_curso">Evento en Curso</string>
+    <string name="label_inicio">Inicio:</string>
+    <string name="label_duracion">Duración:</string>
+    <string name="title_historial_eventos">Historial de Eventos</string>
+    <string name="msg_evento_ya_iniciado">Ya existe un evento en curso. Finalízalo antes de iniciar uno nuevo.</string>
+    <string name="msg_confirmar_crear_tarea">La tarea \"%1$s\" no existe. Selecciona una categoría para crearla e iniciar el evento:</string>
+    <string name="msg_evento_iniciado">Evento iniciado correctamente</string>
+    <string name="msg_evento_finalizado">Evento finalizado con éxito</string>
+    <string name="msg_ingresar_nombre_tarea">Debe ingresar el nombre de la tarea</string>
+    <string name="msg_seleccionar_categoria">Debe seleccionar una categoría</string>
 
     <!-- Categorías -->
     <string name="title_nueva_categoria">Nueva Categoría</string>
@@ -22,7 +38,6 @@
     <string name="label_categoria">Categoría:</string>
     <string name="btn_agregar_tarea">+ Nueva Tarea</string>
     <string name="msg_tarea_vacia">El nombre de la tarea es obligatorio</string>
-    <string name="msg_seleccionar_categoria">Debe seleccionar una categoría existente</string>
     <string name="msg_tarea_duplicada">Ya existe una tarea con el nombre especificado</string>
     <string name="msg_confirmar_eliminar_tarea">¿Está seguro de eliminar la tarea \"%1$s\"?</string>
 
